@@ -1,3 +1,19 @@
+# Created by https://gitignore.org
+# Python.gitignore
+
+# apptainer-images
+*.sif
+*.tar
+command_runner.py
+container_handler.py
+container_sanity_check.py
+performance_monitor.py
+validation_result.py
+validation_result.json
+apptainer-images
+test
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
