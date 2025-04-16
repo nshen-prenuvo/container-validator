@@ -1,5 +1,3 @@
-You're right - I need to be more accurate about what's actually in the repository. Let me create a proper README based only on the files that exist in the code base.
-
 # FOMO25 Challenge Container Validator
 
 A streamlined validation framework for neuroimaging models using Apptainer/Singularity containers. This toolkit helps FOMO25 Challenge participants build, test, and validate their model submissions to ensure they meet all requirements.
