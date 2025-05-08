@@ -25,9 +25,7 @@ Please note: This repository will be continually refined, so check back occasion
   - [Interpreting Validation Results](#interpreting-validation-results)
 - [5. Post-Validation Steps](#5-post-validation-steps)
 - [Troubleshooting Guide](#troubleshooting-guide)
-<!-- - [Submission Checklist](#submission-checklist) -->
 - [FAQ](#faq)
-<!-- - [Glossary](#glossary) -->
 - [Getting Help](#getting-help)
 
 ## Overview
@@ -235,7 +233,7 @@ your-project/
 1. **Clone the validation repository into your project**
 
 ```bash 
-git clone https://github.com/pablorocg/fomo25-sanity-check-pipeline.git validation
+git clone https://github.com/fomo25/container-validator.git validation
 ```
 
 2. **Copy configuration template**
@@ -354,16 +352,16 @@ Before submitting to the challenge platform, verify that:
 
 ## FAQ
 
-**Q: Do I need to include training code in my submission?**  
+**Q: Do I need to include training code in my submission?** 
 A: No, only the inference code is required. The evaluation will only run your `predict.py` script.
 
-**Q: Can I use frameworks other than PyTorch?**  
+**Q: Can I use frameworks other than PyTorch?** 
 A: Yes, you can use any framework as long as it's included in your container. Make sure to specify all dependencies in your `Apptainer.def` file.
 
-**Q: How do I handle GPU support?**  
+**Q: How do I handle GPU support?** 
 A: The validation script will test GPU support if available. Include GPU-compatible versions of your libraries if your model uses GPU acceleration.
 
-**Q: Can I test with my own data?**  
+**Q: Can I test with my own data?** 
 A: Yes, place your test data in the input directory defined in `container_config.yml`.
 
 
@@ -372,7 +370,7 @@ A: Yes, place your test data in the input directory defined in `container_config
 If you encounter issues not covered in this documentation:
 
 - Check the [main FOMO25 Challenge website](https://fomo25.github.io/) for additional resources
-- Post questions by [creating an issue](https://github.com/pablorocg/fomo25-sanity-check-pipeline/issues/new) in the repository
+- Post questions by [creating an issue](https://github.com/fomo25/container-validator/issues/new) in the repository
 - Contact the challenge organizers at fomo25@di.ku.dk
 
 For Apptainer-specific issues, refer to the [official Apptainer documentation](https://apptainer.org/docs/user/latest/).
