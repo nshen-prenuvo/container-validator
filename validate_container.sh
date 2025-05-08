@@ -1,6 +1,5 @@
 #!/bin/bash
-# FOMO25 Container Processor
-# Processes neuroimaging files using Apptainer/Singularity containers
+# FOMO25 Container Validation Tool
 
 # Color codes for messages
 GREEN='\033[0;32m'
@@ -237,13 +236,8 @@ check_env() {
     CONTAINER_CMD="apptainer"
     msg "$GREEN" "Using Apptainer" "✅"
     container_runtime_available=true
-  elif command -v singularity &>/dev/null; then
-    CONTAINER_CMD="singularity"
-    msg "$GREEN" "Using Singularity" "✅"
-    container_runtime_available=true
-    warnings+=("Using singularity instead of apptainer")
   else
-    msg "$RED" "Neither Apptainer nor Singularity found. Please install one of them." "❌"
+    msg "$RED" "Apptainer was not found. Please install one of them." "❌"
     errors+=("Neither apptainer nor singularity found")
     container_runtime_available=false
     exit 1
@@ -252,7 +246,7 @@ check_env() {
   # Check container exists
   if [ ! -f "$CONTAINER_PATH" ]; then
     msg "$RED" "Container not found: $CONTAINER_PATH" "❌"
-    msg "$BLUE" "Run build.sh first to create the container" "💡"
+    msg "$BLUE" "Run $CONTAINER_CMD build first to create the container" "💡"
     errors+=("Container not found: $CONTAINER_PATH")
     exit 1
   else

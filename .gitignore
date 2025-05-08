@@ -188,3 +188,4 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+imgs/workflow-diagram.svg

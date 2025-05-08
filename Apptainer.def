@@ -21,13 +21,8 @@ From: pytorch/pytorch:2.6.0-cuda12.6-cudnn9-runtime
     pip install --no-cache-dir -U pip setuptools wheel
 
     # Install requirements if file exists
-    if [ -f "/app/requirements.txt" ]; then
-        pip install --no-cache-dir -r /app/requirements.txt
-    fi
-
-    # Install package if setup.py exists
-    if [ -f "/app/setup.py" ]; then
-        pip install -e /app
+    if [ -f "/app/container-requirements.txt" ]; then
+        pip install --no-cache-dir -r /app/container-requirements.txt
     fi
 
     # Create non-root user for better security
@@ -37,8 +32,8 @@ From: pytorch/pytorch:2.6.0-cuda12.6-cudnn9-runtime
     # Make Python scripts executable
     find /app -name "*.py" -exec chmod +x {} \;
 
-# %runscript
-#     exec python /app/predict.py --input /input --output /output "$@"
+%runscript
+    exec python /app/predict.py "$@"
 
 %test
     python -c "import sys; print(f'Python {sys.version}')"
