@@ -5,7 +5,6 @@ For instructions on
 2. how to submit your container, please see [Submission instructions](https://www.synapse.org/Synapse:syn64895667/wiki/632983).
 
 ## Installation
-```
 
 We recommend using a virtual environment to avoid dependency conflicts:
 
