@@ -1,5 +1,0 @@
-nibabel 
-numpy 
-pandas 
-scikit-learn 
-tqdm

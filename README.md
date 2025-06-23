@@ -1,62 +1,41 @@
-# FOMO25 Challenge Container Validation
+# FOMO25 Challenge Submission Guide
 
-This repository contains the official container validation tool for the FOMO25 Challenge, which investigates the few-shot generalization properties of foundation models for brain MRI data analysis.
-
+This repository contains the guide for preparing submitting containers for the FOMO25 Challenge.
 Please note: This repository will be continually refined, so check back occasionally to get the latest updates.
 
 ## Table of Contents
 - [Overview](#overview)
-- [Validation Workflow](#validation-workflow)
-- [Prerequisites](#prerequisites)
+
+- [1. Prerequisites](#prerequisites)
   - [Install Apptainer](#install-apptainer)
-  - [Install Required Python Libraries](#install-required-python-libraries)
-- [1. Prepare Required Files](#1-prepare-required-files)
-  - [predict.py](#predictpy)
-  - [requirements.txt](#requirementstxt)
-  - [Apptainer.def](#apptainerdef)
-  - [Container Directory Structure](#container-directory-structure)
-- [2. Integrate Validation with Your Project](#2-integrate-validation-with-your-project)
-  - [Validation Components](#validation-components)
-  - [Project Directory Structure](#project-directory-structure)
-  - [Setup Validation Environment](#setup-validation-environment)
+  <!-- - [Install Required Python Libraries](#install-required-python-libraries) -->
+
+- [2. Prepare Required Files](#1-prepare-required-files)
+
+  - [Task 1: Infarct Detection]()
+    - [Inference file (predict.py)](#requirementstxt)
+    - [Container Definition file (Apptainer.def)](#apptainerdef)
+
+  - [Task 2: Meningioma Segmentation]()
+    - [Inference file (predict.py)](#requirementstxt)
+    - [Container Definition file (Apptainer.def)](#apptainerdef)
+
+  - [Task 3: Brain Age Estimation]()
+    - [Inference file (predict.py)](#requirementstxt)
+    - [Container Definition file (Apptainer.def)](#apptainerdef)
+
 - [3. Build Your Container](#3-build-your-container)
+
 - [4. Run Validation](#4-run-validation)
   - [Validation Process](#validation-process)
   - [Interpreting Validation Results](#interpreting-validation-results)
-- [5. Post-Validation Steps](#5-post-validation-steps)
-- [Troubleshooting Guide](#troubleshooting-guide)
-- [FAQ](#faq)
+
+<!-- - [FAQ](#faq) -->
 - [Getting Help](#getting-help)
 
 ## Overview
 
 The FOMO25 Challenge requires participants to submit their models as containerized solutions. This containerization approach ensures that your model can run in the evaluation environment exactly as it does on your own system, with all dependencies properly packaged. The container creates a standardized, isolated environment where your model can operate regardless of the host system configuration.
-
-This repository provides a validation tool that performs a critical "sanity check" on your container before official submission. The purpose of this validation is not to evaluate how well your model performs, but rather to verify that it meets the technical requirements needed for proper execution in the challenge environment. Many submissions are rejected due to technical issues that could have been caught beforehand, wasting valuable time and effort.
-
-The validation specifically checks:
-
-- Container structure and the presence of required files.
-- Execution permissions and script functionality.
-- Proper handling of input/output paths and NIfTI medical image files (a format commonly used for storing neuroimaging data).
-- Container's ability to run in the expected environment.
-
-By running this validation locally, you can identify and fix technical issues early, ensuring your submission can be properly evaluated on its scientific merits rather than being rejected due to implementation problems.
-
-## Validation Workflow
-
-The validation process follows this general workflow:
-
-1. You prepare the required files for your container
-2. You set up the validation environment
-3. You build your container
-4. You run the validation tool against your container
-5. If validation fails, you debug and fix issues
-6. When validation passes, your container is ready for submission
-
-<div align="center">
-  <img src="imgs/workflow-diagram-v2.svg" width="70%" alt="FOMO25 Container Validation Workflow">
-</div>
 
 ## Prerequisites
 
@@ -71,120 +50,26 @@ Installation instructions by platform:
 - [Install in MacOS](https://apptainer.org/docs/admin/main/installation.html#mac)
 - [Install in Windows](https://apptainer.org/docs/admin/main/installation.html#windows)
 
-Verify your Apptainer installation with:
+Once you have installed it, verify your Apptainer installation with:
 
 ```bash
 apptainer --version
 ```
 
-### Install Required Python Libraries
 
-You need these Python libraries in your local environment for generating synthetic test data and calculating metrics (these are used by the validation scripts outside the container):
 
-```bash
-pip install nibabel numpy pandas scikit-learn tqdm
-```
 
-## 1. Prepare Required Files
 
-You must prepare the following files for your submission (all these files are **mandatory**):
+## 1. Task Specific Requirements
 
-### predict.py
+To participate in the FOMO25 Challenge, you must prepare a container that meets specific requirements for each downstream task. Each task has its own input and output specifications, in order to ensure that your evaluation is successful, you must follow the guidelines below. 
 
-This script handles inference operations with your trained model. It processes NIfTI files and must preserve the original image metadata in the output. The predict.py file must accept the following arguments:
-- `--input`: Path to the input file for inference
-- `--output`: Destination path for saving results
-
-Example usage: 
-
-```bash
-python predict.py --input /path/to/input/file.nii.gz --output /path/to/output/file.nii.gz
-```
-
-**Implementation Template**
-
-```python
-import argparse
-import os
-import nibabel as nib
-import numpy as np
-
-def parse_args():
-    parser = argparse.ArgumentParser(description="FOMO25 Inference CLI")
-    parser.add_argument("--input", type=str, required=True, help="Path to input NIfTI file")
-    parser.add_argument("--output", type=str, required=True, help="Path to save output prediction file")
-    return parser.parse_args()
-
-def main():
-    args = parse_args()
-    
-    # Load input image
-    input_img = nib.load(args.input)
-    input_data = input_img.get_fdata()
-    
-    # Your model inference code here
-    # For this example, create a dummy segmentation
-    output_data = np.zeros_like(input_data)
-    
-    # Save with same metadata as input
-    output_img = nib.Nifti1Image(output_data, input_img.affine, input_img.header)
-    nib.save(output_img, args.output)
-    return 0
-
-if __name__ == "__main__":
-    main()
-```
-
-### requirements.txt
-
-The `requirements.txt` file lists all Python packages required for your model inference, ensuring consistent environment configuration.
-
-**Implementation Example**
-
-```
-torch
-nibabel
-numpy
-```
-Note: This is just an example. Include your own specific dependencies here.
-
-### Apptainer.def
-
-The `Apptainer.def` file contains instructions for building your container environment, ensuring reproducibility and portability.
-
-**Implementation Example**
-```apptainer
-Bootstrap: docker
-From: pytorch/pytorch:2.0.0-cuda11.7-cudnn8-runtime
-
-%files
-    src /app
-    requirements.txt /app/requirements.txt
-
-%post
-    apt-get update && apt-get install -y --no-install-recommends \
-        python3-pip \
-        python3-dev \
-        && rm -rf /var/lib/apt/lists/*
-    
-    pip install --no-cache-dir -r /app/requirements.txt
-    
-    # Make predict.py executable
-    chmod +x /app/predict.py
-
-%runscript
-    exec python /app/predict.py "$@"
-```
-
-### Container Directory Structure
-
-Your container **must** have the following internal structure:
+You must prepare the following files for your submission (all these files are **mandatory**). Your container **must** have the following internal structure:
 
 ```
 /
 ├── app/              # Your application code
-│   ├── predict.py    # Main inference script (REQUIRED)
-│   └── ...           # Other necessary code
+│   └── predict.py    # Main inference script (REQUIRED)
 ├── input/            # Mounted input directory (DO NOT include in container)
 ├── output/           # Mounted output directory (DO NOT include in container)
 └── ...               # Other system files
@@ -194,6 +79,257 @@ Important notes:
 - Your predict.py file must be located at `/app/predict.py`
 - The input and output directories are mounted at runtime and should not be included in your container
 
+
+### Task 1: Infarct Detection
+
+This task requires you to classify the presence of an infarct(s) in brain MRI images (binary classification). 
+
+
+
+### predict.py
+This script will be executed inside your container to perform the classification. It should take the required input images, process them, and output a single probability value indicating the presence of an infarct.
+
+**Input**: T2 FLAIR, DWI (b-value 1000), ADC, and either T2* or SWI images.You will alway receive all four images, but you can use only the ones you need for your model.
+**Output**: A text file (.txt) with the probability that an infarct is present. Single probability value (eg. 0.750).
+
+Your `predict.py` script should handle the following command-line arguments:
+- `--flair`: Path to T2 FLAIR image
+- `--adc`: Path to ADC image
+- `--dwi_b1000`: Path to DWI b1000 image
+- `--t2s`: Path to T2* image (optional, can be replaced with SWI)
+- `--swi`: Path to SWI image (optional, can be replaced with T2*)
+- `--output`: Path to save output .txt file with probability
+
+**Example usage**:
+```bash
+python predict.py \
+  --flair /path/to/flair.nii.gz \
+  --adc /path/to/adc.nii.gz \
+  --dwi_b1000 /path/to/dwi_b1000.nii.gz \
+  --t2s /path/to/t2s.nii.gz \
+  --swi /path/to/swi.nii.gz \
+  --output /path/to/output.txt
+```
+### Apptainer.def
+This file defines how your container is built and what dependencies it includes. It specifies the base image, environment variables, files to include, and the command to run when the container starts. It should be structured as follows. Remember to include the necessary dependencies for your model, such as PyTorch, NumPy, and any other libraries you use in `predict.py`. Ensure that the script is executable and that it correctly handles the input and output paths specified in the command line arguments.
+
+```apptainer
+Bootstrap: docker
+
+# Use any docker image as a base (see https://hub.docker.com/)
+# If using GPU, consider using a CUDA-enabled base image
+From: python:3.11-slim
+
+%labels
+    Author Your Name Here
+    Version v1.0.0
+    Description FOMO25 Infarct Classification Submission
+
+%environment
+    export PYTHONUNBUFFERED=1
+    export LC_ALL=C.UTF-8
+
+%files
+    # Copy your files to the container (predict.py, requirements.txt, model weigths, ...) - ADD YOUR MODEL FILES HERE:
+    ./predict.py /app/predict.py
+    ./requirements.txt /app/requirements.txt
+
+%post
+    mkdir -p /input /output /app
+    
+    # Install system dependencies if needed
+    apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        && rm -rf /var/lib/apt/lists/*
+    
+    # Install Python dependencies
+    pip install --no-cache-dir -U pip setuptools wheel
+    pip install --no-cache-dir -r /app/requirements.txt
+    
+    # Make predict.py executable
+    chmod +x /app/predict.py
+
+%runscript
+    exec python /app/predict.py "$@"
+
+%help
+    Build: apptainer build --fakeroot my_task1_container.sif Apptainer.def
+    
+    Usage: apptainer run --bind /input:/input:ro --bind /output:/output \
+            --nv my_task1_container.sif \
+            --flair /input/flair.nii.gz \
+            --adc /input/adc.nii.gz \
+            --dwi_b1000 /input/dwi.nii.gz \
+            --t2s /input/t2s.nii.gz \
+            --output /output/prediction.txt
+```
+
+
+### Task 2: Meningioma Segmentation
+
+This task requires you to segment meningiomas in brain MRI images. The output should be a binary mask indicating the presence of meningioma in the images.
+### predict.py
+This script will be executed inside your container to perform the segmentation. It should take the required input images, process them, and output a binary segmentation mask.
+
+
+
+**Input**: T2 FLAIR, DWI (b-value 1000), and either T2* or SWI images.
+**Output**: A NIfTI file (.nii.gz) containing the binary segmentation mask of the meningioma. It should have the same dimensions and affine as the input images.
+
+Your `predict.py` script should handle the following command-line arguments:
+- `--flair`: Path to T2 FLAIR image
+- `--dwi_b1000`: Path to DWI b1000 image
+- `--t2s`: Path to T2* image (optional, can be replaced with SWI)
+- `--swi`: Path to SWI image (optional, can be replaced with T2*)
+- `--output`: Path to save segmentation NIfTI file
+
+**Example usage**:
+```bash
+python predict.py \
+  --flair /path/to/flair.nii.gz \
+  --dwi_b1000 /path/to/dwi_b1000.nii.gz \
+  --t2s /path/to/t2s.nii.gz \
+  --swi /path/to/swi.nii.gz \
+  --output /path/to/output.nii.gz
+```
+### Apptainer.def
+
+
+Your `Apptainer.def` file should be structured as follows. Remember to include the necessary dependencies for your model, such as PyTorch, NumPy, and any other libraries you use in `predict.py`. Ensure that the script is executable and that it correctly handles the input and output paths specified in the command line arguments.
+
+```apptainer
+Bootstrap: docker
+
+# Use any docker image as a base (see https://hub.docker.com/)
+# If using GPU, consider using a CUDA-enabled base image
+From: python:3.11-slim
+
+%labels
+    Author Your Name Here
+    Version v1.0.0
+    Description FOMO25 Infarct Classification Submission
+
+%environment
+    export PYTHONUNBUFFERED=1
+    export LC_ALL=C.UTF-8
+
+%files
+    # Copy your files to the container (predict.py, requirements.txt, model weigths, ...) - ADD YOUR MODEL FILES HERE:
+    
+    ./predict.py /app/predict.py
+    ./requirements.txt /app/requirements.txt
+
+%post
+    mkdir -p /input /output /app
+    
+    # Install system dependencies if needed
+    apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        && rm -rf /var/lib/apt/lists/*
+    
+    # Install Python dependencies
+    pip install --no-cache-dir -U pip setuptools wheel
+    pip install --no-cache-dir -r /app/requirements.txt
+    
+    # Make predict.py executable
+    chmod +x /app/predict.py
+
+%runscript
+    exec python /app/predict.py "$@"
+
+%help
+    To use this container you will need to build it first and then run it with the appropriate arguments.
+
+    1. Build: apptainer build --fakeroot my_task2_container.sif Apptainer.def
+    
+    2. Usage: apptainer run --bind /input:/input:ro \
+            --bind /output:/output \
+            --nv \
+            my_task2_container.sif \
+            --flair /input/flair.nii.gz \
+            --adc /input/adc.nii.gz \
+            --dwi_b1000 /input/dwi.nii.gz \
+            --output /output/prediction.txt
+```
+
+### Task 3: Brain Age Estimation
+
+### predict.py
+**Input**: T1-weighted and T2-weighted images.
+**Output**: A text file (.txt) containing the predicted brain age in years.
+
+Required arguments for `predict.py`:
+- `--t1`: Path to T1-weighted image
+- `--t2`: Path to T2-weighted image
+- `--output`: Path to save output .txt file with predicted brain age. Single value (eg. 35.5)
+
+**Example usage**:
+```bash
+python predict.py \
+  --t1 /path/to/t1.nii.gz \
+  --t2 /path/to/t2.nii.gz \
+  --output /path/to/output.txt
+```
+
+### Apptainer.def
+Your `Apptainer.def` file should be structured as follows. Remember to include the necessary dependencies for your model, such as PyTorch, NumPy, and any other libraries you use in `predict.py`. Ensure that the script is executable and that it correctly handles the input and output paths specified in the command line arguments.
+
+```apptainer
+Bootstrap: docker
+
+# Use any docker image as a base (see https://hub.docker.com/)
+# If using GPU, consider using a CUDA-enabled base image
+From: python:3.11-slim
+
+%labels
+    Author Your Name Here
+    Version v1.0.0
+    Description FOMO25 Infarct Classification Submission
+
+%environment
+    export PYTHONUNBUFFERED=1
+    export LC_ALL=C.UTF-8
+
+%files
+    # Copy your files to the container (predict.py, requirements.txt, model weigths, ...) - ADD YOUR MODEL FILES HERE:
+    
+    ./predict.py /app/predict.py
+    ./requirements.txt /app/requirements.txt
+
+%post
+    mkdir -p /input /output /app
+    
+    # Install system dependencies if needed
+    apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        && rm -rf /var/lib/apt/lists/*
+    
+    # Install Python dependencies
+    pip install --no-cache-dir -U pip setuptools wheel
+    pip install --no-cache-dir -r /app/requirements.txt
+    
+    # Make predict.py executable
+    chmod +x /app/predict.py
+
+%runscript
+    exec python /app/predict.py "$@"
+
+%help
+    Build: apptainer build --fakeroot my_task3_container.sif Apptainer.def
+    
+    Usage: apptainer run --bind /input:/input:ro \
+            --bind /output:/output \
+            --nv \
+            my_task3_container.sif \
+           --flair /input/flair.nii.gz \
+           --adc /input/adc.nii.gz \
+           --dwi_b1000 /input/dwi.nii.gz \
+           --output /output/prediction.txt
+```
+
+
+
+<!-- 
 ## 2. Integrate Validation with Your Project
 
 ### Validation Components
@@ -233,7 +369,7 @@ your-project/
 1. **Clone the validation repository into your project**
 
 ```bash 
-git clone https://github.com/fomo25/container-validator.git validation
+git clone https://github.com/pablorocg/fomo25-sanity-check-pipeline.git validation
 ```
 
 2. **Copy configuration template**
@@ -270,19 +406,19 @@ validate:
   compute_metrics: true     # Calculate performance metrics
   save_report: true         # Generate validation report
   result_file: "validation_result.json"  # Report output location
-```
+``` -->
 
 ## 3. Build Your Container
 
-Build your container using the Apptainer.def file you prepared in step 1:
+Build your container using the Apptainer.def file you prepared in step 2:
 
 ```bash
-apptainer build /path/to/save/your/container.sif Apptainer.def
+apptainer build --fakeroot /path/to/save/your/container.sif path/to/Apptainer.def
 ```
 
 This command creates a `.sif` container file that encapsulates your model and all its dependencies.
 
-## 4. Run Validation
+<!-- ## 4. Run Validation
 
 ### Validation Process
 
@@ -302,9 +438,9 @@ The validation process will:
 1. Generate synthetic NIfTI test data (if configured)
 2. Run your container against this test data
 3. Evaluate the output format and basic functionality
-4. Generate a validation report in `validation_result.json`
+4. Generate a validation report in `validation_result.json` -->
 
-### Interpreting Validation Results
+<!-- ### Interpreting Validation Results
 
 The validation tool produces a detailed report with information about:
 - Container structure verification
@@ -336,32 +472,21 @@ Common validation errors and their solutions:
 | Memory errors | Model too large for available resources | Optimize your model or check GPU memory usage |
 | NIfTI format errors | Metadata not preserved | Ensure you're using the input image's affine and header for the output |
 
-For more complex issues, check the validation logs and container build logs for detailed error messages.
+For more complex issues, check the validation logs and container build logs for detailed error messages. -->
 
-<!-- ## Submission Checklist
-
-Before submitting to the challenge platform, verify that:
-
-- [ ] Container includes all required files (predict.py, etc.)
-- [ ] predict.py accepts --input and --output parameters
-- [ ] Container successfully builds without errors
-- [ ] Validation tool runs successfully and passes all checks
-- [ ] Output preserves NIfTI metadata from input files
-- [ ] Container file size is within platform limits (if specified)
-- [ ] All dependencies are properly included in the container -->
 
 ## FAQ
 
-**Q: Do I need to include training code in my submission?** 
+**Q: Do I need to include training code in my submission?**  
 A: No, only the inference code is required. The evaluation will only run your `predict.py` script.
 
-**Q: Can I use frameworks other than PyTorch?** 
+**Q: Can I use frameworks other than PyTorch?**  
 A: Yes, you can use any framework as long as it's included in your container. Make sure to specify all dependencies in your `Apptainer.def` file.
 
-**Q: How do I handle GPU support?** 
+**Q: How do I handle GPU support?**  
 A: The validation script will test GPU support if available. Include GPU-compatible versions of your libraries if your model uses GPU acceleration.
 
-**Q: Can I test with my own data?** 
+**Q: Can I test with my own data?**  
 A: Yes, place your test data in the input directory defined in `container_config.yml`.
 
 
@@ -370,7 +495,7 @@ A: Yes, place your test data in the input directory defined in `container_config
 If you encounter issues not covered in this documentation:
 
 - Check the [main FOMO25 Challenge website](https://fomo25.github.io/) for additional resources
-- Post questions by [creating an issue](https://github.com/fomo25/container-validator/issues/new) in the repository
+- Post questions by [creating an issue](https://github.com/pablorocg/fomo25-sanity-check-pipeline/issues/new) in the repository
 - Contact the challenge organizers at fomo25@di.ku.dk
 
 For Apptainer-specific issues, refer to the [official Apptainer documentation](https://apptainer.org/docs/user/latest/).
