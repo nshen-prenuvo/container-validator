@@ -1,5 +1,9 @@
 # FOMO25 Container Validator
 
+For instructions on
+1. how to prepare your code for submission, please see [Preparing your model for submission](https://www.synapse.org/Synapse:syn64895667/wiki/633093).
+2. how to submit your container, please see [Submission instructions](https://www.synapse.org/Synapse:syn64895667/wiki/632983).
+
 ## How To Run Validation
 
 Once your container is built, run the validation tool to ensure it will work correctly in the evaluation environment. This validation process will check that your container meets the requirements for each task and that it can process the input data correctly. You can use the fake data provided in the `fake_data/fomo25` directory to test your container.
