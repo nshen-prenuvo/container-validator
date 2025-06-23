@@ -12,6 +12,12 @@ You need to install Apptainer (formerly Singularity) to build and run your conta
 - [Install in MacOS](https://apptainer.org/docs/admin/main/installation.html#mac)
 - [Install in Windows](https://apptainer.org/docs/admin/main/installation.html#windows)
 
+1.1 If using MacOS and Windows
+Please follow this guide from _within_ your virtual environment. On Mac that is
+```
+limactl shell apptainer
+sudo apt install python3-pip # to get pip to install the requirements
+```
 Once you have installed it, verify your Apptainer installation with:
 
 ```bash
