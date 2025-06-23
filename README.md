@@ -218,6 +218,7 @@ From: python:3.11-slim
     
     ./predict.py /app/predict.py
     ./requirements.txt /app/requirements.txt
+    
 
 %post
     mkdir -p /input /output /app
@@ -329,84 +330,6 @@ From: python:3.11-slim
 
 
 
-<!-- 
-## 2. Integrate Validation with Your Project
-
-### Validation Components
-
-The validation tool includes these key components that will test your container:
-
-- `validate_container.sh`: Main validation script that orchestrates the testing process
-- `compute_metrics.py`: Calculates performance metrics on your model's output
-- `test_data_generator.py`: Creates synthetic NIfTI test images for validation
-
-You don't need to modify these files, but understanding their purpose helps troubleshoot validation issues.
-
-### Project Directory Structure
-
-Set up your project with the following recommended structure to easily integrate the validation tool:
-
-```
-your-project/
-├── src/                  # Your model code and implementation
-│   ├── predict.py        # Main inference script (will be copied to container)
-│   └── ...               # Other model files
-├── requirements.txt      # Dependencies for your model
-├── Apptainer.def         # Container definition file
-├── validation/           # Validation tool directory (clone from this repo)
-│   ├── validate_container.sh
-│   ├── compute_metrics.py
-│   ├── test_data_generator.py
-│   └── ...
-├── test/                 # Default directories for validation data
-│   ├── input/            # Test inputs (empty, will be populated during validation)
-│   └── output/           # Test outputs (empty, will be populated during validation)
-└── container_config.yml  # Validation configuration
-```
-
-### Setup Validation Environment
-
-1. **Clone the validation repository into your project**
-
-```bash 
-git clone https://github.com/pablorocg/fomo25-sanity-check-pipeline.git validation
-```
-
-2. **Copy configuration template**
-
-```bash 
-cp validation/container_config.template.yml ./container_config.yml
-```
-
-3. **Create necessary directories**
-
-```bash 
-mkdir -p test/input test/output
-```
-
-4. **Configure validation settings**
-Edit `container_config.yml` to match your project's specific needs:
-
-```yaml
-# Container settings
-container:
-  name: "your-model-name"   # Give your container a meaningful name
-  command: "apptainer"      # Use "apptainer" or "singularity" based on your installation
-
-# Directory paths
-directories:
-  input: "test/input"       # Relative path to test input directory
-  output: "test/output"     # Relative path to test output directory
-  containers: "."           # Location where your container image is stored
-
-# Validation settings
-validate:
-  gpu: true                 # Set to false if not using GPU for testing
-  generate_data: true       # Creates synthetic test data
-  compute_metrics: true     # Calculate performance metrics
-  save_report: true         # Generate validation report
-  result_file: "validation_result.json"  # Report output location
-``` -->
 
 ## 3. Build Your Container
 
@@ -418,76 +341,46 @@ apptainer build --fakeroot /path/to/save/your/container.sif path/to/Apptainer.de
 
 This command creates a `.sif` container file that encapsulates your model and all its dependencies.
 
-<!-- ## 4. Run Validation
 
-### Validation Process
 
-Once your container is built, run the validation tool to ensure it will work correctly in the evaluation environment:
+
+
+
+
+
+## 4. Run Validation
+
+Once your container is built, run the validation tool to ensure it will work correctly in the evaluation environment. This validation process will check that your container meets the requirements for each task and that it can process the input data correctly. You can use the fake data provided in the `fake_data/fomo25` directory to test your container.
+
+Arguments for the validation tool:
+- `--task {task1, task2, task3}`: Specify the task you are validating (task1=classification, task2=segmentation, task3=regression).
+- `--container`: Path to your container file (.sif)
+- `--apptainer-cmd`: Command to run Apptainer (default is `apptainer`).
+- `--data-dir`: Path to the data directory containing preprocessed subjects
+- `--output-dir`: Path to the directory where the output will be saved.
+- `--validate-env-only`: Only validate the container environment (skip predictions).
+- `--skip-gpu-check`: Skip GPU availability check during environment validation.
+
 
 ```bash
-./validation/validate_container.sh --path /path/to/your-container.sif
+# Command to run full validation on task 1 (infarct detection)
+python main.py --task task1 --container /path/to/your/container/for/task1.sif --data-dir fake_data/fomo25/fomo-task1-val/ --output-dir output/task1/ 
+
+# Command to run validation on task 2 (meningioma segmentation)
+python main.py --task task2 --container /path/to/your/container/for/task1.sif --data-dir fake_data/fomo25/fomo-task2-val/ --output-dir output/task2/
+
+# Command to run validation on task 3 (brain age estimation)
+python main.py --task task3 --container /path/to/your/container/for/task1.sif --data-dir fake_data/fomo25/fomo-task3-val/ --output-dir output/task3/
+
+
+# Command to only validate the environment (without running the model)
+python main.py --task task1 --container /path/to/your/container/for/task1.sif --data-dir fake_data/fomo25/fomo-task1-val/ --output-dir output/task1/ --validate-env-only
+
+# Command to validate the environment using CPU only (skip GPU checks)
+python main.py --task task1 --container /path/to/your/container/for/task1.sif --data-dir fake_data/fomo25/fomo-task1-val/ --output-dir output/task1/ --validate-env-only --skip-gpu-check
 ```
 
-Or if you've configured a custom `container_config.yml`:
 
-```bash
-./validation/validate_container.sh --config container_config.yml
-```
-
-The validation process will:
-1. Generate synthetic NIfTI test data (if configured)
-2. Run your container against this test data
-3. Evaluate the output format and basic functionality
-4. Generate a validation report in `validation_result.json` -->
-
-<!-- ### Interpreting Validation Results
-
-The validation tool produces a detailed report with information about:
-- Container structure verification
-- Execution success/failure
-- Output format correctness
-- Basic performance metrics
-
-Review this report carefully to identify any issues that need to be addressed.
-
-## 5. Post-Validation Steps
-
-Once your container passes validation:
-
-1. **Review the validation report** one final time to ensure there are no warnings or issues
-2. **Test with representative data** if possible, to confirm your model performs as expected
-3. **Submit your container** to the FOMO25 Challenge platform following the submission guidelines on the main challenge website
-4. **Track your submission status** on the challenge platform for any feedback or issues
-
-## Troubleshooting Guide
-
-Common validation errors and their solutions:
-
-| Error | Possible Cause | Solution |
-|-------|---------------|----------|
-| Missing predict.py | Script not at the correct path | Ensure predict.py is at `/app/predict.py` in the container |
-| Permission denied | Script not executable | Add `chmod +x /app/predict.py` to your Apptainer.def %post section |
-| Dependency errors | Missing packages | Check that all required packages are in requirements.txt and properly installed |
-| Input/output errors | Incorrect path handling | Verify your script correctly uses the paths provided via command-line arguments |
-| Memory errors | Model too large for available resources | Optimize your model or check GPU memory usage |
-| NIfTI format errors | Metadata not preserved | Ensure you're using the input image's affine and header for the output |
-
-For more complex issues, check the validation logs and container build logs for detailed error messages. -->
-
-
-## FAQ
-
-**Q: Do I need to include training code in my submission?**  
-A: No, only the inference code is required. The evaluation will only run your `predict.py` script.
-
-**Q: Can I use frameworks other than PyTorch?**  
-A: Yes, you can use any framework as long as it's included in your container. Make sure to specify all dependencies in your `Apptainer.def` file.
-
-**Q: How do I handle GPU support?**  
-A: The validation script will test GPU support if available. Include GPU-compatible versions of your libraries if your model uses GPU acceleration.
-
-**Q: Can I test with my own data?**  
-A: Yes, place your test data in the input directory defined in `container_config.yml`.
 
 
 ## Getting Help
