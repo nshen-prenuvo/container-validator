@@ -22,11 +22,10 @@ apptainer --version
 2. Install python requirements
 
 ```bash
-python -m venv venv
-source venv/bin/activate  # On Windows use: venv\Scripts\activate
+# in an environment of your choice
 pip install -r requirements.txt
 ```
-Make sure you have Python 3.8+ and pip installed.
+Make sure you have Python 3.11+ and pip installed.
 
 ## How To Run Validation
 
