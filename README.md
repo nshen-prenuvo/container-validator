@@ -6,8 +6,6 @@ For instructions on
 
 ## Installation
 
-We recommend using a virtual environment to avoid dependency conflicts:
-
 1. Install Apptainer
 You need to install Apptainer (formerly Singularity) to build and run your container. Installation instructions by platform:
 - [Install in Linux (Ubuntu, Debian, Fedora, ...)](https://apptainer.org/docs/admin/main/installation.html#install-from-pre-built-packages)
