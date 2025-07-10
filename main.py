@@ -379,7 +379,9 @@ class ContainerValidator:
             return False, "No segmentation masks found"
 
         for mask_file in mask_files:
-            subject_id = mask_file.stem.replace(self.SUBJECT_PREFIX, "")
+            subject_id = mask_file.name.replace(self.SUBJECT_PREFIX, "").replace(
+                ".nii.gz", ""
+            )
             subject_dir = preprocessed_dir / f"{self.SUBJECT_PREFIX}{subject_id}"
 
             try:
@@ -425,7 +427,6 @@ class ContainerValidator:
                 return False, "Data directory required for segmentation validation"
             return self._validate_segmentation_outputs(output_dir, data_dir)
 
-
     def run_full_validation(
         self, data_dir: Path, output_dir: Path, skip_gpu_check: bool = False
     ) -> Tuple[bool, str]:
@@ -457,8 +458,6 @@ class ContainerValidator:
         return True, "Full validation completed successfully"
 
 
-
-
 import argparse
 import sys
 
@@ -478,7 +477,7 @@ Examples:
 
   # Only validate outputs (skip prediction)
   python main.py --task task1 --output-dir /path/to/output --data-dir /path/to/data --validate-outputs-only
-    """
+    """,
     )
 
     # Required arguments
@@ -532,7 +531,6 @@ Examples:
 def validate_arguments(args: argparse.Namespace) -> None:
     """Validate command-line arguments and check for required combinations."""
 
-
     # Data directory is required for most operations
     if not args.validate_env_only and not args.data_dir:
         raise ValueError("--data-dir is required unless using --validate-env-only")
@@ -565,12 +563,10 @@ def run_environment_validation(
 
 
 def run_predictions(
-    validator: ContainerValidator,
-    data_dir: Path,
-    output_dir: Path
+    validator: ContainerValidator, data_dir: Path, output_dir: Path
 ) -> bool:
     """Run predictions and return success status."""
-    
+
     print("=== Running Predictions for All Subjects ===")
     success, msg = validator.predict_all(data_dir, output_dir)
 
@@ -629,8 +625,6 @@ def main():
             success = run_environment_validation(validator, args.skip_gpu_check)
             overall_success = success
 
-        
-
         else:
             # Full validation or single subject test
             if not validator:
@@ -643,9 +637,7 @@ def main():
 
             if success:  # Only proceed if environment validation passed
                 # Run predictions
-                success = run_predictions(
-                    validator, args.data_dir, args.output_dir
-                )
+                success = run_predictions(validator, args.data_dir, args.output_dir)
                 overall_success = overall_success and success
 
                 if success:  # Only validate outputs if predictions succeeded
