@@ -1,4 +1,0 @@
-nibabel
-numpy
-pandas
-scipy

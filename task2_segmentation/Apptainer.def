@@ -1,45 +1,122 @@
 Bootstrap: docker
 
-# Use any docker image as a base (see https://hub.docker.com/)
-# If using GPU, consider using a CUDA-enabled base image
-From: python:3.11-slim
+# Use Ubuntu 18.04 as base for compatibility
+From: ubuntu:18.04
 
 %labels
-    Author FOMO25 Challenge - Segmentation Task
-    Version v1.0.0
-    Description FOMO25 Binary Segmentation Apptainer Image
+    Author FOMO25 Challenge - Multi-Environment Segmentation Task
+    Version v2.1.0
+    Description FOMO25 Binary Segmentation with Pyenv + Conda Environments (Fixed)
 
 %environment
     export PYTHONUNBUFFERED=1
     export LC_ALL=C.UTF-8
+    export LANG=C.UTF-8
+    
+    # Add pyenv and conda to PATH
+    export PATH="/root/.pyenv/bin:$PATH"
+    export PATH="/opt/conda/bin:$PATH"
+    
+    # Initialize pyenv and conda
+    eval "$(pyenv init -)"
+    eval "$(conda shell.bash hook)"
 
 %files
-    # Copy your files (model, predict.py, requirements.txt, ...) to the container
-    ./predict.py /app/predict.py
-    ./requirements.txt /app/requirements.txt
+    # Copy dependency files to the container
+    pyenv_requirements.txt /app/pyenv_requirements.txt
+    
+    # Copy baseline codebase
+    ../../../../baseline-codebase /app/baseline-codebase
+    
+    # Copy inference scripts and configuration
+    scripts/inference.py /app/inference.py
+    scripts/preprocess.py /app/preprocess.py
+    scripts/postprocess.py /app/postprocess.py
+    scripts/predict.py /app/predict.py
+    scripts/test_usage.py /app/test_usage.py
+    scripts/model_config.json /app/model_config.json
+    
+    # Copy model checkpoint
+    ../../lightning/checkpoints/unetr_base_vitmae_p16_m0.5_full_shallow_continued3_overlap0.5/epoch739_step2960_val_dice0.63397.ckpt /app/model.ckpt
+    
+    # Copy MIM-Med3D code
+    ../../MIM-Med3D/code /app/MIM-Med3D/code
 
 %post
     # Create necessary directories
-    mkdir -p /input /output /app
+    mkdir -p /input /output /app /tmp
 
-    # Update and install system dependencies
+    # Set timezone non-interactively to prevent build hanging
+    export DEBIAN_FRONTEND=noninteractive
+    export TZ=America/Vancouver
+    ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+    # Update and install system dependencies (INCLUDING ncurses for Python curses support)
     apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
+        build-essential \
+        curl \
+        git \
+        wget \
+        ca-certificates \
+        libssl-dev \
+        zlib1g-dev \
+        libbz2-dev \
+        libreadline-dev \
+        libsqlite3-dev \
+        libncursesw5-dev \
+        libncurses5-dev \
+        ncurses-dev \
+        xz-utils \
+        tk-dev \
+        libxml2-dev \
+        libxmlsec1-dev \
+        libffi-dev \
+        liblzma-dev \
+        tzdata \
+        && rm -rf /var/lib/apt/lists/*
 
-    # Install Python dependencies
+    # Install pyenv
+    curl https://pyenv.run | bash
+    export PATH="/root/.pyenv/bin:$PATH"
+    eval "$(pyenv init -)"
+    
+    # Install Python 3.12 for preprocessing (via pyenv)
+    pyenv install 3.12.6
+    pyenv global 3.12.6
+    
+    # Install basic packages for the base Python installation
     pip install --no-cache-dir -U pip setuptools wheel
-    pip install --no-cache-dir -r /app/requirements.txt
-
-    # Make predict.py executable
-    chmod +x /app/predict.py
+    pip install --no-cache-dir "numpy>=1.23,<2.0"  # Force NumPy 1.x for compatibility
+    pip install --no-cache-dir -r /app/pyenv_requirements.txt
+    
+    # Install Miniconda for inference environment
+    wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /tmp/miniconda.sh
+    bash /tmp/miniconda.sh -b -p /opt/conda
+    rm /tmp/miniconda.sh
+    
+    # Initialize conda
+    export PATH="/opt/conda/bin:$PATH"
+    conda init bash
+    
+    # Fix conda Terms of Service issue - bypass YAML file and create environment manually
+    conda config --add channels conda-forge
+    conda config --set channel_priority flexible
+    conda config --set always_yes true
+    
+    # Create conda environment manually using only conda-forge (no YAML file)
+    conda create -n fomo-condaenv -c conda-forge --override-channels python=3.8 numpy scipy pandas matplotlib -y
+    
+    # Install pip packages directly in the conda environment (avoid activation issues)
+    /opt/conda/envs/fomo-condaenv/bin/pip install --no-cache-dir kornia>=0.7.0 nvitop>=0.3.6.2 monai>=1.3.0 rich>=10.7.0 nibabel>=3.2.1 einops>=0.3.0 mlflow>=1.20.1 timm>=0.9.0 scikit-image mmcv>=2.0.0 "jsonargparse[signatures]" pyarrow fastparquet python-snappy lightning>=2.0.0 torch>=2.0.0 torchmetrics>=1.0.0
 
 %runscript
-    # Execute the prediction script with all arguments
-    exec python /app/predict.py "$@"
+    # Execute the complete pipeline script with all arguments
+    # This will run preprocessing (pyenv) then inference (conda)
+    # exec /root/.pyenv/versions/fomo-pyenv/bin/python /app/predict.py "$@"
+    exec /root/.pyenv/versions/3.12.6/bin/python /app/predict.py "$@"
 
 %help
-    This container runs the FOMO25 binary segmentation task.
+    This container runs a complete medical image segmentation pipeline: preprocessing (pyenv + Python 3.12) followed by inference (conda + Python 3.8) and postprocessing.
 
     Build this container with:
         
@@ -51,7 +128,51 @@ From: python:3.11-slim
             --bind /path/to/output:/output \
             --nv \
             segmentation.sif \
-            --flair /input/flair.nii.gz \
-            --dwi_b1000 /input/dwi.nii.gz \
-            --t2s /input/t2s.nii.gz \
+            --flair /input/t2_flair.nii.gz \
+            --dwi_b1000 /input/dwi_b1000.nii.gz \
+            --t2s /input/t2_star.nii.gz \
             --output /output/segmentation.nii.gz`
+    
+    Required Arguments:
+        --flair          Path to T2 FLAIR image (.nii.gz)
+        --dwi_b1000      Path to DWI b1000 image (.nii.gz)
+        --output         Path to save final postprocessed segmentation NIfTI file
+    
+    Optional Arguments:
+        --t2s            Path to T2* image (can be replaced with --swi)
+        --swi            Path to SWI image (can be replaced with --t2s)
+        --temp_dir       Temporary directory for preprocessed data (default: /tmp/preprocessed)
+        --num_classes    Number of segmentation classes (default: 1)
+        --model_config   Path to model configuration file (default: model_config.json)
+    
+    Note: At least one of --t2s or --swi must be provided.
+    
+    Pipeline Workflow:
+        1. Preprocessing: Uses baseline codebase preprocessing (pyenv fomo-pyenv + Python 3.12.6)
+           - Converts raw NIfTI data to preprocessed .npy files
+           - Applies normalization, resampling, and cropping
+           - Saves case properties and affine transformation matrices
+        2. Inference: Uses PyTorch environment (conda fomo-condaenv + Python 3.8)
+           - Loads preprocessed .npy files
+           - Runs UNETR segmentation model with MIM-Med3D
+           - Outputs intermediate segmentation mask
+        3. Postprocessing: Uses baseline codebase postprocessing (pyenv fomo-pyenv)
+           - Applies inverse transformations to restore original image space
+           - Converts back to NIfTI format with proper affine matrix
+           - Outputs final segmentation mask
+    
+    Environment Details:
+        - Preprocessing: Python 3.12.6 (pyenv fomo-pyenv) with baseline codebase
+        - Inference: Python 3.8 (conda fomo-condaenv) with PyTorch, MONAI, and ML libraries
+        - Postprocessing: Python 3.12.6 (pyenv fomo-pyenv) with baseline codebase
+    
+    Input Requirements:
+        - T2 FLAIR: T2-weighted FLAIR sequence
+        - DWI b1000: Diffusion-weighted imaging with b=1000
+        - T2* or SWI: T2*-weighted or susceptibility-weighted imaging
+        - All inputs must be in NIfTI format (.nii.gz)
+    
+    Output:
+        - Final segmentation mask in NIfTI format (.nii.gz)
+        - Binary segmentation (single class) by default
+        - Preserves original image space and affine transformations

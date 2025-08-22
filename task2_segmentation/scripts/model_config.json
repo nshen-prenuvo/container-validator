@@ -1,0 +1,32 @@
+{
+    "model_config": {
+        "in_channels": 1,
+        "out_channels": 2,
+        "img_size": [96, 96, 16],
+        "feature_size": 16,
+        "hidden_size": 1024,
+        "mlp_dim": 4096,
+        "num_layers": 8,
+        "num_heads": 16,
+        "pos_embed": "perceptron",
+        "norm_name": "instance",
+        "res_block": true,
+        "conv_block": true,
+        "dropout_rate": 0.0,
+        "pretrained": "/app/model.ckpt"
+    },
+    "inference_config": {
+        "roi_size": [96, 96, 16],
+        "sw_batch_size": 4,
+        "overlap": 0.5,
+        "device": "auto"
+    },
+    "preprocessing_config": {
+        "target_orientation": "RAS",
+        "patch_size": [96, 96, 16],
+        "target_spacing": [1.0, 1.0, 1.0],
+        "crop_to_nonzero": true,    
+        "keep_aspect_ratio": true,
+        "normalization": "volume_wise_znorm"
+    }
+} 

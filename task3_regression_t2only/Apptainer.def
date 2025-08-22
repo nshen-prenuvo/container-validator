@@ -1,0 +1,180 @@
+Bootstrap: docker
+
+# Use Ubuntu 18.04 as base for compatibility
+From: ubuntu:18.04
+
+%labels
+    Author FOMO25 Challenge - Task 3 Regression
+    Version v2.1.0
+    Description FOMO25 Task 3 Brain Age Regression with Pyenv + Conda Environments
+
+%environment
+    export PYTHONUNBUFFERED=1
+    export LC_ALL=C.UTF-8
+    export LANG=C.UTF-8
+    
+    # Add pyenv and conda to PATH
+    export PATH="/root/.pyenv/bin:$PATH"
+    export PATH="/opt/conda/bin:$PATH"
+    
+    # Initialize pyenv and conda
+    eval "$(pyenv init -)"
+    eval "$(conda shell.bash hook)"
+
+%files
+    # Copy dependency files to the container
+    pyenv_requirements.txt /app/pyenv_requirements.txt
+    
+    # Copy baseline codebase
+    ../../../../baseline-codebase /app/baseline-codebase
+    
+    # Copy inference scripts and configuration
+    scripts/inference.py /app/inference.py
+    scripts/preprocess.py /app/preprocess.py
+    scripts/predict.py /app/predict.py
+    scripts/test_usage.py /app/test_usage.py
+    scripts/model_config.json /app/model_config.json
+    
+    # Copy model checkpoint
+    ../../lightning/checkpoints/reg_vit_mean_pooling_p16_m0.5_full_shallow_continued3_overlap0.25_T020/epoch539_step21600_val_r20.37078.ckpt /app/model.ckpt
+    
+    # Copy MIM-Med3D code
+    ../../MIM-Med3D/code /app/MIM-Med3D/code
+
+%post
+    # Create necessary directories
+    mkdir -p /input /output /app /tmp
+
+    # Set timezone non-interactively to prevent build hanging
+    export DEBIAN_FRONTEND=noninteractive
+    export TZ=America/Vancouver
+    ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+    # Update and install system dependencies (INCLUDING ncurses for Python curses support)
+    apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        curl \
+        git \
+        wget \
+        ca-certificates \
+        libssl-dev \
+        zlib1g-dev \
+        libbz2-dev \
+        libreadline-dev \
+        libsqlite3-dev \
+        libncursesw5-dev \
+        libncurses5-dev \
+        ncurses-dev \
+        xz-utils \
+        tk-dev \
+        libxml2-dev \
+        libxmlsec1-dev \
+        libffi-dev \
+        liblzma-dev \
+        tzdata \
+        && rm -rf /var/lib/apt/lists/*
+
+    # Install pyenv
+    curl https://pyenv.run | bash
+    export PATH="/root/.pyenv/bin:$PATH"
+    eval "$(pyenv init -)"
+    
+    # Install Python 3.12 for preprocessing (via pyenv)
+    pyenv install 3.12.6
+    pyenv global 3.12.6
+    
+    # Install basic packages for the base Python installation
+    pip install --no-cache-dir -U pip setuptools wheel
+    pip install --no-cache-dir "numpy>=1.23,<2.0"  # Force NumPy 1.x for compatibility
+    pip install --no-cache-dir -r /app/pyenv_requirements.txt
+    
+    # Install Miniconda for inference environment
+    wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /tmp/miniconda.sh
+    bash /tmp/miniconda.sh -b -p /opt/conda
+    rm /tmp/miniconda.sh
+    
+    # Initialize conda
+    export PATH="/opt/conda/bin:$PATH"
+    conda init bash
+    
+    # Fix conda Terms of Service issue - bypass YAML file and create environment manually
+    conda config --add channels conda-forge
+    conda config --set channel_priority flexible
+    conda config --set always_yes true
+    
+    # Create conda environment manually using only conda-forge (no YAML file)
+    conda create -n fomo-condaenv -c conda-forge --override-channels python=3.8 numpy scipy pandas matplotlib -y
+    
+    # Install pip packages directly in the conda environment (avoid activation issues)
+    /opt/conda/envs/fomo-condaenv/bin/pip install --no-cache-dir kornia>=0.7.0 nvitop>=0.3.6.2 monai>=1.3.0 rich>=10.7.0 nibabel>=3.2.1 einops>=0.3.0 mlflow>=1.20.1 timm>=0.9.0 scikit-image mmcv>=2.0.0 "jsonargparse[signatures]" pyarrow fastparquet python-snappy lightning>=2.0.0 torch>=2.0.0 torchmetrics>=1.0.0
+
+%runscript
+    # Execute the complete regression pipeline script with all arguments
+    # This will run preprocessing (pyenv) then regression inference (conda)
+    exec /root/.pyenv/versions/3.12.6/bin/python /app/predict.py "$@"
+
+%help
+    This container runs a complete medical image brain age regression pipeline: preprocessing (pyenv + Python 3.12) followed by regression inference (conda + Python 3.8).
+
+    Build this container with:
+        
+        `apptainer build --fakeroot /path/to/save/regression.sif /path/to/Apptainer.def`
+    
+    Usage:
+        
+        `apptainer run --bind /path/to/input:/input:ro \
+            --bind /path/to/output:/output \
+            --nv \
+            regression.sif \
+            --t1 /input/t1.nii.gz \
+            --t2 /input/t2.nii.gz \
+            --output /output/brain_age_prediction.txt`
+    
+    Required Arguments:
+        --t1              Path to T1-weighted image (.nii.gz)
+        --t2              Path to T2-weighted image (.nii.gz)
+        --output          Path to save final brain age prediction (.txt file with age value)
+    
+    Optional Arguments:
+        --temp_dir        Temporary directory for preprocessed data (default: /tmp/preprocessed)
+        --config          Path to model configuration file (default: /app/model_config.json)
+        --output_size     Output size for regression (default: 1)
+    
+    Pipeline Workflow:
+        1. Preprocessing: Uses baseline codebase preprocessing (pyenv + Python 3.12.6)
+           - Converts raw T1 and T2 NIfTI data to preprocessed .npy files
+           - Applies normalization, resampling, and cropping
+           - Saves case properties and affine transformation matrices
+        2. Regression Inference: Uses PyTorch environment (conda fomo-condaenv + Python 3.8)
+           - Loads preprocessed .npy files
+           - Runs ViT mean pooling regression model with MIM-Med3D on both T1 and T2
+           - Averages predictions from both modalities
+           - Outputs predicted brain age to text file
+    
+    Environment Details:
+        - Preprocessing: Python 3.12.6 (pyenv) with baseline codebase
+        - Regression: Python 3.8 (conda fomo-condaenv) with PyTorch, MONAI, and ML libraries
+    
+    Input Requirements:
+        - T1: T1-weighted image sequence
+        - T2: T2-weighted image sequence
+        - Both inputs must be in NIfTI format (.nii.gz)
+        - Both modalities must have the same dimensions
+    
+    Output:
+        - Brain age prediction in text format (.txt)
+        - Contains predicted brain age in years (e.g., "65.0")
+        - Value is averaged from T1 and T2 modality predictions
+        - Individual modality predictions are logged for monitoring
+    
+    Dual Modality Processing:
+        - The model processes both T1 and T2 modalities separately
+        - Individual predictions are computed for each modality
+        - Final prediction is the average of both modality predictions
+        - This approach provides more robust and accurate brain age estimation
+    
+    Model Architecture:
+        - ViT (Vision Transformer) backbone with mean pooling
+        - Regression head for continuous age prediction
+        - Pre-trained weights loaded from checkpoint file
+        - Supports both CPU and GPU inference
